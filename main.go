@@ -18,13 +18,12 @@ import (
 )
 
 func main() {
-	// Load environment variables
+
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Initialize database
 	database.ConnectionDB()
 
 	sqlDb, err := database.DBConn.DB()
@@ -42,7 +41,6 @@ func main() {
 
 
 
-	// Create S3 Client
 	s3Client := s3.NewFromConfig(cfg)
 	uploader := manager.NewUploader(s3Client)
 
