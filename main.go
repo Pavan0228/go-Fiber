@@ -5,14 +5,16 @@ import (
 	"fiber-server/routers"
 	"log"
 
+	"os"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 
-	// "context"
-	// "github.com/aws/aws-sdk-go-v2/config"
-	// "github.com/aws/aws-sdk-go-v2/service/s3"
-	// "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"context"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func main() {
@@ -31,22 +33,28 @@ func main() {
 	}
 	defer sqlDb.Close()
 
-	// // Load AWS Config
-	// cfg, err := config.LoadDefaultConfig(context.TODO())
-	// if err != nil {
-	// 	log.Fatalf("Failed to load AWS config: %v", err)
-	// }
 
-	// // Create S3 Client
-	// s3Client := s3.NewFromConfig(cfg)
-	// uploader := manager.NewUploader(s3Client)
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(os.Getenv("AWS_REGION")))
+	if err != nil {
+		log.Fatalf("Failed to load AWS config: %v", err)
+	}
+
+
+
+	// Create S3 Client
+	s3Client := s3.NewFromConfig(cfg)
+	uploader := manager.NewUploader(s3Client)
+
+	log.Println("AWS S3 uploader is set up successfully")
+
 
 	// Initialize Fiber app
 	app := fiber.New()
 	app.Use(logger.New())
 
 	// Setup routes
-	routers.SetUpRouter(app)
+	routers.SetUpRouter(app , uploader)
 
 	// Start server
 	log.Fatal(app.Listen(":4000"))

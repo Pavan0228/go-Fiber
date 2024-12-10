@@ -4,10 +4,11 @@ import (
 	"fiber-server/controller"
 
 	// "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetUpRouter(app *fiber.App ) {
+func SetUpRouter(app *fiber.App , uploader *manager.Uploader) {
 
 
 	app.Get("/" , controller.BlogList)
@@ -15,10 +16,8 @@ func SetUpRouter(app *fiber.App ) {
 	app.Post("/" , controller.CreateBlog)
 
 
-	app.Post("/upload" , controller.CompressImg)
-
-	// app.Put("/:id" , controller.UpdateBlog)
-
-	// app.Delete("/:id" , controller.DeleteBlog)
+	app.Post("/upload", func(c *fiber.Ctx) error {
+		return controller.CompressImg(c, uploader)
+	})
 
 }

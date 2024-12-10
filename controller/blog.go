@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"log"
 
-	// "context"
-	// "os"
+	"context"
+	"os"
 
-	// "github.com/aws/aws-sdk-go-v2/aws"
-	// "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	// "github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/gofiber/fiber/v2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+
 	"github.com/disintegration/imaging"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func BlogList(c *fiber.Ctx) error {
@@ -124,7 +127,7 @@ func CreateBlog(c *fiber.Ctx) error {
 // }
 
 
-func CompressImg(c *fiber.Ctx) error {
+func CompressImg(c *fiber.Ctx ,uploader *manager.Uploader ) error {
 	response := fiber.Map{
 		"message": "compress image",
 		"status":  "success",
@@ -176,21 +179,38 @@ func CompressImg(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
+
+	compressedFile, err := os.Open(compressedFilePath)
+	if err != nil {
+		log.Printf("Error opening compressed file: %v", err)
+		response["message"] = "Error opening compressed file"
+		response["status"] = "error"
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+	defer compressedFile.Close()
+
+
+	bucketName := os.Getenv("AWS_BUCKET_NAME")
+	objectKey := "uploads/compressed_" + file.Filename
+
+	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName), 
+		Key:    aws.String(objectKey),
+		Body:   compressedFile,
+		ACL:    types.ObjectCannedACLPublicRead,
+	})
+	if err != nil {
+		log.Printf("Error uploading to S3: %v", err)
+		response["message"] = "Error uploading file"
+		response["status"] = "error"
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
 	response["message"] = "File uploaded and compressed successfully"
-	response["compressedFilePath"] = compressedFilePath
+	response["s3URL"] = "https://" + bucketName + ".s3.amazonaws.com/" + objectKey
 	return c.JSON(response)
+
 }
 
 
-	// // Upload to S3
-	// uploadResult, err := uploader.Upload(context.TODO(), &s3.PutObjectInput{
-	// 	Bucket: aws.String("autofinancetrack-pennytracker"), // Replace with your bucket name
-	// 	Key:    aws.String(file.Filename),
-	// 	Body:   openedFile,
-	// })
-	// if err != nil {
-	// 	log.Printf("Error uploading to S3: %v", err)
-	// 	response["message"] = "Error uploading file"
-	// 	response["status"] = "error"
-	// 	return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// }
+
